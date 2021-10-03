@@ -5,22 +5,6 @@ from typing import Tuple
 import re
 
 
-from shamir.adapters import IntAdapter
-
-
-def main():
-    adapter = IntAdapter(8)
-    fact = ShareFactory(adapter, '')
-    sh1 = fact.parse(' 1 2 4 4')
-    print(sh1, sh1.x(), sh1.value)
-    s = fact.format(sh1)
-    print(s)
-    sh2 = fact.parse('1 2 3 4 4')
-    sh3 = fact.parse('1  100')
-    # print(sh2)
-    print(ShareFactory.common_prefix([sh2, sh1, sh3]))
-
-
 class ShareFactory:
     """
     Class to parse Shamir secret pool shares from string format.
@@ -68,7 +52,7 @@ class ShareFactory:
 
     def format(self, share, adapter):
         parts = tuple(str(n) for n in share.prefix)
-        if self.separator != None:
+        if self.separator is not None:
             parts += (self.separator, )
         val = adapter.from_int(share.value)
         parts += (val, )
@@ -128,8 +112,3 @@ class Share:
             return self.prefix[-1]
         else:
             return None
-
-
-if __name__ == "__main__":
-    main()
-    exit(0)

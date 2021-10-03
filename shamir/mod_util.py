@@ -18,3 +18,26 @@ def eval_poly_mod(poly_coeffs, x, modulus):
         accum += coeff
         accum %= modulus
     return accum
+
+
+def lagrange_interpolate(x, x_s, y_s, modulus):
+    """
+    Find the y-value for the given x, given n (x, y) points;
+    k points will define a polynomial of up to kth order.
+    """
+    k = len(x_s)
+    if k != len(set(x_s)):
+        raise ValueError("points must be distinct")
+
+    accum = 0
+    for i in range(k):
+        others = list(x_s)
+        cur = others.pop(i)
+        term = y_s[i]
+        for o in others:
+            term *= x - o
+            term *= pow(cur - o, -1, modulus)
+            term %= modulus
+        accum += term
+    accum %= modulus
+    return accum

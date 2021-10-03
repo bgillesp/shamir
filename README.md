@@ -33,19 +33,20 @@ Combine shamir secrets for fixed k for given mnenomic phrase shares
 
 ## To do
 
-- (/) unit tests and test coverage framework
+- (/) unit tests and test coverage framework (!!!!!)
   - tests for CLI
   - tests for adapters
   - use test vector framework
-- Propogate nested shares to CLI
-- CLI option for random share numbers (specify number of digits)
-- CLI option for datatype
-- Add functions to combine compatible nested shares
-- Any additional data types?  Hex, binary, ...
-- (/) proper packaging of binaries
 - readme
 - license
-- (?) group thresholds
+- specify file for source of randomness (?)
+- default separator for prefixes: '.' (?)
+- bug: extend with empty string
+- (/) proper packaging of binaries
+- (X) Propogate nested shares to CLI
+- (X) CLI option for random share numbers (specify number of digits)
+- (X) group thresholds
+- (X) Add functions to combine compatible nested shares
 - (X) dependency
 - (X) file input for mnemonics
 - (X) support for specified polynomial coefficients
@@ -53,14 +54,12 @@ Combine shamir secrets for fixed k for given mnenomic phrase shares
 - (X) refactor `prime_modulus` into separate file `shamir.primes`
 - (X) refactor `format_mnemonic` function
 - (?) test vectors for additional languages in trezor mnemonic library
+- (-) CLI option for datatype
+- (-) Any additional data types?  Hex, binary, ...
 
 
-Two responsibilities:
-- Shamir secret sharing polynomial manipulation, which can occur in any prime field
-- Adapting data types to integers and back
-
-
-Parsing input data:
-- Auto-detect secret datatype and bitlength from input
-- Allow to specify type or bitlength
--
+Nested shamir secrets:
+- Combine a list of shares:
+  - Given a list of shares, combine them up to the depth of their common prefix
+- Extend a list of shares:
+  - Given an int or a tuple, give a share which extends the pool up to the specified prefix

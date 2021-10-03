@@ -1,6 +1,5 @@
 from mnemonic import Mnemonic
 from shamir.adapters import Adapter
-from shamir.adapters.registry import register_adapter
 from shamir.mod_util import canonical_repr
 
 from itertools import zip_longest
@@ -60,8 +59,3 @@ class BIP39Adapter(Adapter):
             columns.append(col)
         rows = zip_longest(*columns, fillvalue='')
         return '\n'.join([''.join(row) for row in rows])
-
-
-register_adapter('bip39', BIP39Adapter, {})
-for lang in Mnemonic.list_languages():
-    register_adapter(f'bip39-{lang}', BIP39Adapter, {'language': lang})
