@@ -36,16 +36,17 @@ def cli():
               ' specified value.')
 @click.option('-p', '--pretty', is_flag=True,
               help='Print output in pretty human-readable format.')
-@click.option('-v', '--verbose', is_flag=True,
-              help='Print verbose output.')
 @click.option('--seed', type=int,
               help='Option to facilitate testing.  Use a pseudorandom number'
               ' generator with the specified seed instead of a secure system'
               ' random number generator.  DO NOT USE THIS OPTION TO GENERATE A'
               ' PRODUCTION POOL.  The use of a deterministic random number'
               ' generator may reduce the security of the output.')
+@click.option('--list-parameters', 'list_params', is_flag=True,
+              help='Output a list of internal parameters which would be used'
+              ' for the computation, then exit.')
 def generate(threshold, num_shares, secret, lang,
-             rand_indices, pretty, verbose, seed):
+             rand_indices, pretty, seed, list_params):
     """
     Generate shares of a Shamir secret sharing pool for a specified secret.
     Generates a pool consisting of NUM_SHARES total shares, any THRESHOLD of
@@ -74,34 +75,23 @@ def generate(threshold, num_shares, secret, lang,
         prime, prime_str = get_prime(bitlength), format_prime(bitlength)
 
         shamir = Shamir(prime)
-        shares = shamir.generate_pool(
+        shares = shamir.generate(
             secret, spec, rand_indices=rand_indices, seed=seed)
+
+        if list_params:
+            exit_list_params({
+                "bitlength": bitlength,
+                "prime_modulus": prime_str,
+            })
     except Exception as e:
-        raise(e)
         exit_error(str(e))
 
     if pretty:
-        print("====== Begin Shamir Secret Pool ======")
-        if verbose:
-            print("threshold = %d shares" % threshold)
-            print("prime_modulus = %s" % prime_str)
-        if len(secret.prefix) > 0:
-            print()
-            print("----- Prefix -----")
-            print(' '.join(str(p) for p in secret.prefix))
-        print()
-        print("------ Secret ------")
-        print(adapter.from_int(secret.value, pretty=True))
-        print()
         for share in shares:
-            print("------ Share %d ------" % share.x())
-            logging.info("x = %d" % share.x())
+            prefix_str = '.'.join(str(n) for n in share.prefix)
+            print(f"Share {prefix_str}")
             print(adapter.from_int(share.value, pretty=True))
-            print()
-        print("====== End Shamir Secret Pool ======")
     else:
-        if verbose:
-            print("k = %d, p = %s" % (threshold, prime_str))
         for share in shares:
             print(sh_fact.format(share, adapter))
 
@@ -114,9 +104,10 @@ def generate(threshold, num_shares, secret, lang,
               help='Language list to use for BIP-39 mnemonic phrases.')
 @click.option('-p', '--pretty', is_flag=True,
               help='Print output in pretty human-readable format.')
-@click.option('-v', '--verbose', is_flag=True,
-              help='Print verbose output.')
-def extend(new_share_number, share_strs, lang, pretty, verbose):
+@click.option('--list-parameters', 'list_params', is_flag=True,
+              help='Output a list of internal parameters which would be used'
+              ' for the computation, then exit.')
+def extend(new_share_number, share_strs, lang, pretty, list_params):
     """
     Extend an existing Shamir pool for BIP-39 mnemonic seed phrases.  Each
     share should be provided as a string in the following format:
@@ -148,26 +139,22 @@ def extend(new_share_number, share_strs, lang, pretty, verbose):
                 raise ValueError("specified share has empty prefix")
 
         prime, prime_str = get_prime(bitlength), format_prime(bitlength)
-
         shamir = Shamir(prime)
+        new_share = shamir.extend(new_share_number, shares)
 
-        new_share = shamir.extend_pool(new_share_number, shares)
-        prefix_str = ' '.join(str(n) for n in new_share.prefix)
+        if list_params:
+            exit_list_params({
+                "bitlength": bitlength,
+                "prime_modulus": prime_str,
+            })
     except Exception as e:
         exit_error(str(e))
 
     if pretty:
-        print("====== Begin Extend Shamir Secret Pool ======")
-        if verbose:
-            print("prime_modulus = %s" % prime_str)
-        print()
-        print("New Share (%s)" % prefix_str)
+        prefix_str = '.'.join(str(n) for n in new_share.prefix)
+        print("Share %s" % prefix_str)
         print(adapter.from_int(new_share.value, pretty=True))
-        print()
-        print("====== End Extend Shamir Secret Pool ======")
     else:
-        if verbose:
-            print("p = %s" % prime_str)
         print(sh_fact.format(new_share, adapter))
 
 
@@ -182,9 +169,10 @@ def extend(new_share_number, share_strs, lang, pretty, verbose):
               help='Language list to use for BIP-39 mnemonic phrases.')
 @click.option('-p', '--pretty', is_flag=True,
               help='Print output in pretty human-readable format.')
-@click.option('-v', '--verbose', is_flag=True,
-              help='Print verbose output.')
-def combine(share_strs, file, lang, pretty, verbose):
+@click.option('--list-parameters', 'list_params', is_flag=True,
+              help='Output a list of internal parameters which would be used'
+              ' for the computation, then exit.')
+def combine(share_strs, file, lang, pretty, list_params):
     """
     Combine shares of a Shamir pool for BIP-39 mnemonic seed phrases to recover
     the original secret phrase.  Each share should be provided as a string in
@@ -211,34 +199,37 @@ def combine(share_strs, file, lang, pretty, verbose):
         shamir = Shamir(prime)
 
         shares = tuple(sh_fact.parse(sh, adapter) for sh in share_strs)
-        secret = shamir.combine_shares(shares)
+        secret = shamir.combine(shares)
 
-        # if secret is None:
-        #     raise Exception("error merging secret shares")
+        if list_params:
+            exit_list_params({
+                "bitlength": bitlength,
+                "prime_modulus": prime_str,
+            })
     except Exception as e:
         exit_error(str(e))
 
     if pretty:
-        print("====== Begin Recovered Shamir Secret ======")
-        if verbose:
-            print("prime_modulus = %s" % prime_str)
-        print()
-        print("Combined Mnemonic")
-        if secret.prefix != ():
-            prefix_str = ' '.join(str(n) for n in secret.prefix)
-            print("Prefix %s" % prefix_str)
+        if len(secret.prefix) > 0:
+            prefix_str = '.'.join(str(n) for n in secret.prefix)
+            print(f"Combined Share {prefix_str}")
+        else:
+            print("Root Share")
         print(adapter.from_int(secret.value, pretty=True))
-        print()
-        print("====== End Recovered Shamir Secret ======")
     else:
-        if verbose:
-            print("p = %s" % (prime_str))
         print(sh_fact.format(secret, adapter))
 
 
 def exit_error(error_str):
     print(_error_msg(error_str))
     exit(1)
+
+
+def exit_list_params(param_dict):
+    print("parameters:")
+    for key, value in param_dict.items():
+        print(f"  {key}={value}")
+    exit(0)
 
 
 def _error_msg(error_str):

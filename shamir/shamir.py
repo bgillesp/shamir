@@ -36,7 +36,7 @@ class Shamir:
         """
         self.p = prime
 
-    def generate_pool(self, secret, spec, rand_indices=None, seed=None):
+    def generate(self, secret, spec, rand_indices=None, seed=None):
         """
         Generates random shamir secret shares for a given secret, and specified
         number of bits.  Returns the points of the shares.
@@ -73,9 +73,9 @@ class Shamir:
                     ])
                 return rands[idx]
 
-        return self._rec_generate_pool(secret, spec, rand_indices, rng)
+        return self._rec_generate(secret, spec, rand_indices, rng)
 
-    def _rec_generate_pool(self, secret, spec, rand_indices, rng):
+    def _rec_generate(self, secret, spec, rand_indices, rng):
         # 1. generate coefficients
         num_shares = spec.num_shares()
         threshold = spec.threshold
@@ -123,14 +123,14 @@ class Shamir:
                     ]
                     for s_sh in sub_shares:
                         shares.extend(
-                            self._rec_generate_pool(
+                            self._rec_generate(
                                 s_sh, sh[1], rand_indices, rng)
                         )
 
         # 5. return list of all generated shares
         return shares
 
-    def extend_pool(self, val, shares):
+    def extend(self, val, shares):
         """
         Extend the secret share pool by generating a share with the given
         x-value or prefix.
@@ -141,7 +141,6 @@ class Shamir:
             x = val
         elif type(val) is tuple and all(type(n) is int for n in val):
             if val == ():
-                return
                 raise ValueError("cannot extend pool with empty value")
             prefix = val[:-1]
             x = val[-1]
@@ -165,7 +164,7 @@ class Shamir:
 
         peers = list()
         for p in active_shares:
-            peers.append(self._combine_shares(active_shares[p]))
+            peers.append(self._combine(active_shares[p]))
         if len(peers) == 0:
             raise ValueError("specified prefix has no peers")
 
@@ -178,14 +177,15 @@ class Shamir:
 
         return Share(new_value, prefix + (x, ))
 
-    def recover_secret(self, shares):
+    def combine(self, shares):
         """
         Recover the secret from share points.
         """
-        secret = self._combine_shares(shares)
-        return secret
+        # TODO check compatibility of shares, ...
 
-    def _combine_shares(self, shares):
+        return self._combine(shares)
+
+    def _combine(self, shares):
         """
         Combine the given shares up to their common prefix.  Assumes that all
         specified shares come from the same properly constructed pool.

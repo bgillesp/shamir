@@ -37,13 +37,14 @@ Combine shamir secrets for fixed k for given mnenomic phrase shares
   - tests for CLI
   - tests for adapters
   - use test vector framework
+- (/) proper packaging of binaries
 - readme
 - license
 - specify file for source of randomness (?)
-- default separator for prefixes: '.' (?)
-- bug: extend with empty string
 - does Shamir class do anything as a class?
-- (/) proper packaging of binaries
+- make sure CLI try-except statements are as small as possible
+- (X) default separator for prefixes: '.' (?)
+- (X) bug: extend with empty string
 - (X) Propogate nested shares to CLI
 - (X) CLI option for random share numbers (specify number of digits)
 - (X) group thresholds

@@ -25,19 +25,19 @@ class TestShamir(unittest.TestCase):
             shamir = Shamir(p)
             secret = Share(s)
             spec = ShamirSpec(k, n)
-            shares = shamir.generate_pool(secret, spec)
+            shares = shamir.generate(secret, spec)
 
             # test pool extension: extend by one additional share
 
             if n < p - 1:
-                sh = shamir.extend_pool(n + 1, shares)
+                sh = shamir.extend(n + 1, shares)
                 shares.append(sh)
 
             # test secret recovery and compatibility of extension share
             enough_shares = itertools.combinations(range(len(shares)), k)
             for tup in enough_shares:
                 selected = tuple(shares[i] for i in tup)
-                recovered_secret = shamir.recover_secret(selected)
+                recovered_secret = shamir.combine(selected)
                 self.assertEqual(secret, recovered_secret)
 
     def test_shamir_generate(self):
@@ -61,7 +61,7 @@ class TestShamir(unittest.TestCase):
             msg = "(s, k, n, p) = %s" % ((s, k, n, p), )
             with self.assertRaises(ValueError, msg=msg):
                 shamir = Shamir(p)
-                shamir.generate_pool(s, k, n)
+                shamir.generate(s, k, n)
 
         good_inputs = [
             (0, 2, 4, 11),
@@ -74,7 +74,7 @@ class TestShamir(unittest.TestCase):
             secret = Share(s)
             spec = ShamirSpec(k, n)
 
-            shares = shamir.generate_pool(secret, spec)
+            shares = shamir.generate(secret, spec)
             for sh in shares:
                 self.assertEqual(type(sh), Share, msg)
                 self.assertEqual(len(sh.prefix), 1, msg)
@@ -87,14 +87,17 @@ class TestShamir(unittest.TestCase):
         secret = Share(s)
         spec = ShamirSpec(k, n)
 
-        shares1 = shamir.generate_pool(secret, spec, seed=seed)
-        shares2 = shamir.generate_pool(secret, spec, seed=seed)
+        shares1 = shamir.generate(secret, spec, seed=seed)
+        shares2 = shamir.generate(secret, spec, seed=seed)
         for sh1, sh2 in zip(shares1, shares2):
             self.assertEqual(sh1, sh2)
 
     def test_shamir_extend(self):
         s, k, n, p = 0, 2, 4, 11
-        shamir, shares = gen_simple_pool(s, k, n, p)
+        shamir = Shamir(p)
+        secret = Share(s)
+        spec = ShamirSpec(k, n)
+        shares = shamir.generate(secret, spec)
 
         bad_x_values = [
             1.5,    # x a float
@@ -105,24 +108,27 @@ class TestShamir(unittest.TestCase):
         for x in bad_x_values:
             msg = "x = %s" % x
             with self.assertRaises(ValueError, msg=msg):
-                shamir.extend_pool(x, shares)
+                shamir.extend(x, shares)
 
         msg = "no shares"
         with self.assertRaises(ValueError, msg=msg):
-            shamir.extend_pool(1, [])
+            shamir.extend(1, [])
 
         good_x_values = range(1, p)
         for x in good_x_values:
             msg = "x = %s" % x
             try:
-                shamir.extend_pool(x, shares)
+                shamir.extend(x, shares)
             except Exception as e:
                 raise(e)
                 self.fail(msg)
 
+    def test_shamir_combine(self):
+        pass
 
-def gen_simple_pool(s, k, n, p):
-    shamir = Shamir(p)
-    secret = Share(s)
-    spec = ShamirSpec(k, n)
-    return shamir, shamir.generate_pool(secret, spec)
+
+# def gen_simple_pool(s, k, n, p):
+#     shamir = Shamir(p)
+#     secret = Share(s)
+#     spec = ShamirSpec(k, n)
+#     return shamir, shamir.generate(secret, spec)
