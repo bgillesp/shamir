@@ -78,23 +78,29 @@ class Shamir:
     def _rec_generate_pool(self, secret, spec, rand_indices, rng):
         # 1. generate coefficients
         num_shares = spec.num_shares()
+        threshold = spec.threshold
+
         if num_shares >= self.p:
             raise ValueError(
                 "specified number of shares is too large for prime modulus")
 
         coeff_rng = rng(0)
-        coeffs = [coeff_rng.randrange(self.p) for _ in range(num_shares - 1)]
+        coeffs = [secret.value % self.p]
+        coeffs.extend(
+            [coeff_rng.randrange(self.p) for _ in range(threshold - 1)])
 
         # 2. generate indices
         if rand_indices is None:
             indices = range(1, num_shares + 1)
         else:
             index_rng = rng(1)
-            indices = index_rng.choices(
+            indices = index_rng.sample(
                 range(1, rand_indices + 1), k=num_shares)
 
         # 3. generate shares
-        share_pts = self.gen(secret.value, coeffs, indices)
+        share_pts = [
+            (x, eval_poly_mod(coeffs, x, self.p)) for x in indices
+        ]
 
         # 4. recursive generate on sub_specs
         shares = list()
@@ -163,7 +169,12 @@ class Shamir:
         if len(peers) == 0:
             raise ValueError("specified prefix has no peers")
 
-        new_value = self.eval(x, tuple((sh.x(), sh.value) for sh in peers))
+        new_value = lagrange_interpolate(
+            x,
+            tuple(sh.x() for sh in peers),
+            tuple(sh.value for sh in peers),
+            self.p
+        )
 
         return Share(new_value, prefix + (x, ))
 
@@ -171,10 +182,8 @@ class Shamir:
         """
         Recover the secret from share points.
         """
-        return self._combine_shares(shares)
-        # return self.eval(0, shares)
-        # x_s, y_s = zip(*shares)
-        # return lagrange_interpolate(0, x_s, y_s, self.p)
+        secret = self._combine_shares(shares)
+        return secret
 
     def _combine_shares(self, shares):
         """
@@ -193,25 +202,26 @@ class Shamir:
         share_pool = dict()
         for sh in shares:
             for i in range(len_common_prefix, len(sh.prefix)):
-                p = sh.prefix[:i]
-                if p not in share_pool:
-                    share_pool[p] = list()
+                pr = sh.prefix[:i]
+                if pr not in share_pool:
+                    share_pool[pr] = list()
             share_pool[sh.prefix[:-1]].append(sh)
 
         # merge shares given with each common prefix
         all_prefixes = list(share_pool.keys())
-        all_prefixes.sort(key=(lambda p: len(p)), reverse=True)
-        for p in all_prefixes:
-            merged_val = self.eval(
-                0, tuple((sh.x(), sh.value) for sh in share_pool[p])
-            )
-            merged = Share(merged_val, p)
-            if p == common_prefix:
+        all_prefixes.sort(key=(lambda pr: len(pr)), reverse=True)
+        for pr in all_prefixes:
+            xs = tuple(sh.x() for sh in share_pool[pr])
+            ys = tuple(sh.value for sh in share_pool[pr])
+            merged_val = lagrange_interpolate(0, xs, ys, self.p)
+            merged = Share(merged_val, pr)
+
+            if pr == common_prefix:
                 result = merged
                 break
             else:
-                new_p = p[:-1]
-                share_pool[new_p].append(merged)
+                new_pr = pr[:-1]
+                share_pool[new_pr].append(merged)
 
         return result
 
@@ -220,9 +230,9 @@ class Shamir:
         coeffs = [secret % self.p] + coeffs
         return [(i, eval_poly_mod(coeffs, i, self.p)) for i in indices]
 
-    def eval(self, x, points):
-        x_s, y_s = zip(*points)
-        return lagrange_interpolate(x, x_s, y_s, self.p)
+    # def eval(self, x, points):
+    #     x_s, y_s = zip(*points)
+    #     return lagrange_interpolate(x, x_s, y_s, self.p)
 
     # combine shares up to given prefix, checks that all shares have prefix
     # combine shares up to common prefix

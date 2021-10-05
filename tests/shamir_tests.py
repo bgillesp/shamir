@@ -1,91 +1,44 @@
 import unittest
 
-from shamir.shamir import Shamir
+from shamir.shamir import Shamir, ShamirSpec
+from shamir.share import Share
 import itertools
 import random
 
 
 class TestShamir(unittest.TestCase):
-    def test_modular_arithmetic(self):
-        """
-        Test that modular arithmetic and polynomial evaluation works correctly.
-        """
-        p = 11
-        shamir = Shamir(p)
-
-        coeffs = [2, 5, 3]  # f(x) = 2 + 5x + 3x^2
-        self.assertEqual(shamir._eval_at(coeffs, 0), 2)
-        self.assertEqual(shamir._eval_at(coeffs, 11), 2)
-        self.assertEqual(shamir._eval_at(coeffs, 1), 10)
-        self.assertEqual(shamir._eval_at(coeffs, 5), 3)
-        self.assertEqual(shamir._eval_at(coeffs, -10), 10)
-
-    def test_modular_inverses(self):
-        """
-        Test that inverses are available in modular arithmetic.  Implemented
-        in Python 3.8 and higher.
-        """
-        p = 11
-        self.assertEqual(pow(1, -1, p), 1)
-        self.assertEqual(pow(2, -1, p), 6)
-        self.assertEqual(pow(3, -1, p), 4)
-        self.assertEqual(pow(4, -1, p), 3)
-        self.assertEqual(pow(6, -1, p), 2)
-
-    def test_lagrange_interpolation(self):
-        """
-        Test that mod-p Lagrange interpolation functions properly.
-        """
-
-        # f(x) = 2 + 5x + 3x^2 (mod 11)
-        p = 11
-        shamir = Shamir(p)
-        x_s = range(10)
-        y_s = [2, 10, 2, 0, 4, 3, 8, 8, 3, 4]
-
-        # test valid interpolation with various input points for f
-        for idx_s in [(1, 4, 6), (4, 5, 6), (7, 1, 2), (9, 8, 0)]:
-            cur_x_s = [x_s[i] for i in idx_s]
-            cur_y_s = [y_s[i] for i in idx_s]
-            for x, y in zip(x_s, y_s):
-                self.assertEqual(
-                    shamir._lagrange_interpolate(x, cur_x_s, cur_y_s), y
-                )
-
-        # test bad inputs for interpolation
-        for idx_s in [(1, 1, 3)]:
-            bad_x_s = [x_s[i] for i in idx_s]
-            bad_y_s = [y_s[i] for i in idx_s]
-            x, y = 0, 2
-            with self.assertRaises(ValueError):
-                shamir._lagrange_interpolate(x, bad_x_s, bad_y_s)
 
     def test_shamir_pool_correctness(self):
         """
         Test that shamir pool operations correctly function together.
         """
-        num_tests = 50
-        max_k, max_n = 6, 12
+        num_tests = 20
+        max_k, max_n = 5, 10
         primes = [3, 5, 7, 11, 13, 17, 19]
         for _ in range(num_tests):
-            p = primes[random.randint(0, len(primes) - 1)]
-            n = random.randint(1, min(p - 2, max_n))
-            k = random.randint(1, min(n, max_k))
-            s = random.randint(0, p - 1)
-            shamir = Shamir(p)
+            p = primes[random.randrange(len(primes))]
+            s = random.randrange(p)
+            k = random.randint(2, min(p - 1, max_k))
+            n = random.randint(k, min(p - 1, max_n))
 
             # test pool generation
-            shares = shamir.generate_pool(s, k, n)
+            shamir = Shamir(p)
+            secret = Share(s)
+            spec = ShamirSpec(k, n)
+            shares = shamir.generate_pool(secret, spec)
 
             # test pool extension: extend by one additional share
-            x = n + 1
-            y = shamir.extend_pool(x, [shares[i] for i in range(k)])
-            shares.append((x, y))
+
+            if n < p - 1:
+                sh = shamir.extend_pool(n + 1, shares)
+                shares.append(sh)
 
             # test secret recovery and compatibility of extension share
-            for tup in itertools.combinations(range(n + 1), k):
-                selected = [shares[i] for i in tup]
-                self.assertEqual(shamir.recover_secret(selected), s)
+            enough_shares = itertools.combinations(range(len(shares)), k)
+            for tup in enough_shares:
+                selected = tuple(shares[i] for i in tup)
+                recovered_secret = shamir.recover_secret(selected)
+                self.assertEqual(secret, recovered_secret)
 
     def test_shamir_generate(self):
         bad_inputs = [          # (s, k, n, p)
@@ -118,26 +71,30 @@ class TestShamir(unittest.TestCase):
         for s, k, n, p in good_inputs:
             msg = "(s, k, n, p) = %s" % ((s, k, n, p), )
             shamir = Shamir(p)
-            shares = shamir.generate_pool(s, k, n)
+            secret = Share(s)
+            spec = ShamirSpec(k, n)
+
+            shares = shamir.generate_pool(secret, spec)
             for sh in shares:
-                self.assertEqual(type(sh), tuple, msg)
-                self.assertEqual(len(sh), 2, msg)
+                self.assertEqual(type(sh), Share, msg)
+                self.assertEqual(len(sh.prefix), 1, msg)
             self.assertEqual(len(shares), n, msg)
 
         # explicit coefficients
         s, k, n, p = 0, 3, 4, 11
-        coeffs = [123, 1212123]
+        seed = 12345
         shamir = Shamir(p)
-        shares1 = shamir.generate_pool(s, k, n, coeffs=coeffs)
-        shares2 = shamir.generate_pool(s, k, n, coeffs=coeffs)
-        for (x1, y1), (x2, y2) in zip(shares1, shares2):
-            self.assertEqual(x1, x2)
-            self.assertEqual(y1, y2)
+        secret = Share(s)
+        spec = ShamirSpec(k, n)
+
+        shares1 = shamir.generate_pool(secret, spec, seed=seed)
+        shares2 = shamir.generate_pool(secret, spec, seed=seed)
+        for sh1, sh2 in zip(shares1, shares2):
+            self.assertEqual(sh1, sh2)
 
     def test_shamir_extend(self):
         s, k, n, p = 0, 2, 4, 11
-        shamir = Shamir(p)
-        shares = shamir.generate_pool(s, k, n)
+        shamir, shares = gen_simple_pool(s, k, n, p)
 
         bad_x_values = [
             1.5,    # x a float
@@ -158,7 +115,14 @@ class TestShamir(unittest.TestCase):
         for x in good_x_values:
             msg = "x = %s" % x
             try:
-                y = shamir.extend_pool(x, shares)
-            except Exception:
+                shamir.extend_pool(x, shares)
+            except Exception as e:
+                raise(e)
                 self.fail(msg)
-            # self.assertTrue(shamir._proper(y), msg)
+
+
+def gen_simple_pool(s, k, n, p):
+    shamir = Shamir(p)
+    secret = Share(s)
+    spec = ShamirSpec(k, n)
+    return shamir, shamir.generate_pool(secret, spec)

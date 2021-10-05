@@ -42,6 +42,7 @@ Combine shamir secrets for fixed k for given mnenomic phrase shares
 - specify file for source of randomness (?)
 - default separator for prefixes: '.' (?)
 - bug: extend with empty string
+- does Shamir class do anything as a class?
 - (/) proper packaging of binaries
 - (X) Propogate nested shares to CLI
 - (X) CLI option for random share numbers (specify number of digits)

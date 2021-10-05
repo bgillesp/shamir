@@ -42,5 +42,3 @@ class TestPrimes(unittest.TestCase):
         for bits in valid_bitlengths:
             s = primes.format_prime(bits)
             self.assertEqual(type(s), str)
-
-    def test_prime_poly_eval(self):

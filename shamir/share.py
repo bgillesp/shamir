@@ -102,7 +102,7 @@ class Share:
     dumb data class, and all values and prefixes are represented as int values.
     """
     value: int
-    prefix: Tuple[int, ...]
+    prefix: Tuple[int, ...] = ()
 
     def depth(self):
         return len(self.prefix)

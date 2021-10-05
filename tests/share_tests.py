@@ -1,9 +1,7 @@
 import unittest
 
 from shamir.share import ShareFactory, Share
-from shamir.adapters import IntAdapter
-# import itertools
-# import random
+from shamir.adapters.int_adapter import IntAdapter
 
 
 class TestShare(unittest.TestCase):
@@ -40,7 +38,7 @@ class TestShare(unittest.TestCase):
         Test the parser regular expression for share strings.
         """
 
-        # Test parsing with integer adapter and default separator string
+        # Test parsing with BIP39 adapter and default separator string
         bitlength = 8
         adapter = IntAdapter(bitlength)
         sh_fact = ShareFactory()

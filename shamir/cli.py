@@ -211,7 +211,7 @@ def combine(share_strs, file, lang, pretty, verbose):
         shamir = Shamir(prime)
 
         shares = tuple(sh_fact.parse(sh, adapter) for sh in share_strs)
-        secret = shamir.recover_secret(shares)
+        secret = shamir.combine_shares(shares)
 
         # if secret is None:
         #     raise Exception("error merging secret shares")
