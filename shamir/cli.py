@@ -164,7 +164,7 @@ def extend(new_share_number, share_strs, lang, pretty, list_params):
               ' mnemonic.')
 @click.option('-f', '--filename', 'file', type=click.File(),
               help='File to read for shares used to reconstruct the secret'
-              ' mnemonic.')
+              ' mnemonic, one share per line.')
 @click.option('-l', '--language', 'lang', default='english',
               help='Language list to use for BIP-39 mnemonic phrases.')
 @click.option('-p', '--pretty', is_flag=True,
